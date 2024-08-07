@@ -106,7 +106,6 @@ byte SAFETY = 0;        // Safety goes first
 byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //Tube address
 unsigned long gotByte;     // Radio data
 
-
 //--------------- FUNCTIONS ---------------//
 // This Function will return joystick angles [Rate, Yaw, pitch] [Psi, Theta, Phi]
 // I'm Still not sure how to use it correctly, need to check in reality
@@ -140,12 +139,12 @@ void pid_equation(float Error, float KP, float KI, float KD, float PrevData, flo
   if(k == 1) Data = pitch;
   if(k == 2) Data = yaw;
   uD = KD * (Data - PrevData);
- /* Serial.print("PID\tuP: ");
+  Serial.print("PID\tuP: ");
   Serial.print(uP);
   Serial.print("\tuI: ");
   Serial.print(uI);
   Serial.print("\tuD: ");
-  Serial.println(uD);*/
+  Serial.println(uD);
   PID = uP + uI + uD;
   if (PID>200) PID=200;
   else if (PID <-200) PID=-200;
@@ -243,6 +242,7 @@ void gyro_signals(void) {
              Serial.print(pitch);
              Serial.print("\troll: ");
              Serial.println(roll);
+             Serial.print("\n ");
           #endif
         #endif
      }
@@ -397,14 +397,10 @@ void loop() {
     Serial.print("\tRoll: ");
     Serial.println(RollPID);
     //------------ FORMULA FOR DRONE ------------//
-    FR = y2 + x2 + y1 + x1 - PitchPID - RollPID; 
-    FL = y2 - x2 + y1 - x1 - PitchPID + RollPID;
-    BR = y2 - x2 - y1 + x1 + PitchPID - RollPID;
-    BL = y2 + x2 - y1 - x1 + PitchPID + RollPID;
-   // FR = map(FR, -1200, 1200, 1000, 2000);
-   // FL = map(FL, -1200, 1200, 1000, 2000);
-   // BR = map(BR, -1200, 1200, 1000, 2000);
-   // BL = map(BL, -1200, 1200, 1000, 2000);
+    FR = y2 + x2 - y1 - x1 - PitchPID - RollPID; 
+    FL = y2 - x2 - y1 + x1 - PitchPID + RollPID;
+    BR = y2 - x2 + y1 - x1 + PitchPID - RollPID;
+    BL = y2 + x2 + y1 + x1 + PitchPID + RollPID;
     FR = map(FR, -2000, 2000, 1000, 2000);
     FL = map(FL, -2000, 2000, 1000, 2000);
     BR = map(BR, -2000, 2000, 1000, 2000);
@@ -455,10 +451,10 @@ void loop() {
     gyro_signals();
     reset_pid();
     pid_Home();
-    FR = y2 + x2 + y1 + x1 - YawPID - PitchPID - RollPID; 
-    FL = y2 - x2 + y1 - x1 + YawPID - PitchPID + RollPID;
-    BR = y2 - x2 - y1 + x1 + YawPID + PitchPID - RollPID;
-    BL = y2 + x2 - y1 - x1 - YawPID + PitchPID + RollPID;
+    FR = y2 + x2 - y1 - x1 - PitchPID - RollPID; 
+    FL = y2 - x2 - y1 + x1 - PitchPID + RollPID;
+    BR = y2 - x2 + y1 - x1 + PitchPID - RollPID;
+    BL = y2 + x2 + y1 + x1 + PitchPID + RollPID;
     for(n; n<250;){
       FR = FR - n;
       BR = BR - n;
