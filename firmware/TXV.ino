@@ -157,6 +157,7 @@ void setup() {
   //при самой низкой скорости имеем самую высокую чувствительность и дальность!!
   radio.powerUp();        // начать работу
   radio.stopListening();  // не слушаем радиоэфир, мы передатчик
+  Serial.begin(9600);
 }
 //------------ SETUP ENDS ------------//
 
@@ -187,7 +188,6 @@ void loop() {
     y2 = analogRead(A2) / 4;
     gyro_signals();
     if(OldYaw == 180)OldYaw = 0;
-    gyro_signals();
     roll = OldRoll - roll;
     yaw = OldYaw - yaw;
     pitch = OldPitch - pitch;
@@ -204,6 +204,14 @@ void loop() {
     if(roll == 128) roll = 125;
     if(pitch == 127) pitch = 125;
     if(yaw == 128) yaw = 125;
+    if(!(roll - 125 >= 15 || roll - 125 <= -15)) roll = 125;
+    if(!(pitch - 125 >= 15 || pitch - 125 <= -15)) pitch = 125;
+    if(!(yaw - 125 >= 25 || yaw - 125 <= -25)) yaw = 125;
+    Serial.print(yaw);
+    Serial.print("\t");
+    Serial.print(pitch);
+    Serial.print("\t");
+    Serial.println(roll);
     sent = ((long(roll) << 24) + (long(pitch) << 16) + (long(yaw) << 8) + y2);
     radio.write(&sent, sizeof(sent));
     }
