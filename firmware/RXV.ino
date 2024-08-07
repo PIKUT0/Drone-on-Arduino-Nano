@@ -78,21 +78,21 @@ int yaw, pitch, roll;   // our yaw pitch and roll and other shit from GY521
 //--------- For PID ---------//
 float PIDReturn[]={0, 0, 0}; //PID output
 //Angle
-int des_AngleRoll;        // Desired Roll angle
-int des_AnglePitch;       // Desired pitch angle
-int des_AngleYaw;         // Desired yaw angle
+int des_AngleRoll;      // Desired Roll angle
+int des_AnglePitch;     // Desired pitch angle
+int des_AngleYaw;       // Desired yaw angle
 
-float er_AngleRoll = 0;   // Error for roll angle in degrees
-float er_AnglePitch= 0;   // Error for pitch angle in degress
-float er_AngleYaw = 0;    // Error for yaw angle in degrees 
+float er_AngleRoll = 0; // Error for roll angle in degrees
+float er_AnglePitch= 0; // Error for pitch angle in degress
+float er_AngleYaw = 0;  // Error for yaw angle in degrees 
 
-float p_a_AngleRoll=0;    // p_e{..} = Previous Error for roll angle
-float p_a_AnglePitch=0;   // p_e{..} = Previous Error for pitch angle
-float p_a_AngleYaw=0;     // p_e{..} = Previous Error for Yaw angle
+float p_a_AngleRoll=0;  // p_e{..} = Previous Error for roll angle
+float p_a_AnglePitch=0; // p_e{..} = Previous Error for pitch angle
+float p_a_AngleYaw=0;   // p_e{..} = Previous Error for Yaw angle
 
-float S_I_AngleRoll = 0;  // p_e{..} = Previous Integral sum of Error for roll angle   
-float S_I_AnglePitch =0;  // p_e{..} = Previous Integral sum of Error for pitch angle
-float S_I_AngleYaw = 0;   // p_e{..} = Previous Integral sum of Error for Yaw angle
+float S_I_AngleRoll = 0;// p_e{..} = Previous Integral sum of Error for roll angle   
+float S_I_AnglePitch =0;// p_e{..} = Previous Integral sum of Error for pitch angle
+float S_I_AngleYaw = 0; // p_e{..} = Previous Integral sum of Error for Yaw angle
 //--- For MOTORS and Radio ---//
 int x1,y1,x2,y2;        // Our radio joystick variables
 int RollPID, PitchPID, YawPID;
@@ -139,12 +139,6 @@ void pid_equation(float Error, float KP, float KI, float KD, float PrevData, flo
   if(k == 1) Data = pitch;
   if(k == 2) Data = yaw;
   uD = KD * (Data - PrevData);
-  Serial.print("PID\tuP: ");
-  Serial.print(uP);
-  Serial.print("\tuI: ");
-  Serial.print(uI);
-  Serial.print("\tuD: ");
-  Serial.println(uD);
   PID = uP + uI + uD;
   if (PID>200) PID=200;
   else if (PID <-200) PID=-200;
@@ -159,18 +153,18 @@ void pid_calculate(){
   Serial.print("ROLL\n");
   er_AngleRoll = des_AngleRoll - roll; 
   p_a_AngleRoll = roll;
-  pid_equation(er_AngleRoll, 0.6, 0.4, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
+  pid_equation(er_AngleRoll, 0.35, 0.3, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
   p_a_AngleRoll = PIDReturn[1];
   S_I_AngleRoll = PIDReturn[2];
   RollPID = int(PIDReturn[0]);
   
   // --- YAW --- //
-  //No need
+  //No Need
   // --- PITCH --- //
   Serial.print("PITCH\n");
   er_AnglePitch = des_AnglePitch - pitch;
   p_a_AnglePitch = pitch;
-  pid_equation(er_AnglePitch, 0.6, 0.4, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
+  pid_equation(er_AnglePitch, 0.35, 0.3, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
   p_a_AnglePitch = PIDReturn[1];
   S_I_AnglePitch = PIDReturn[2];
   PitchPID = int(PIDReturn[0]);
@@ -181,21 +175,21 @@ void pid_Home(){
   // --- ROLL --- //
   er_AngleRoll = 0 - roll; 
   p_a_AngleRoll = roll;
-  pid_equation(er_AngleRoll, 0.6, 0.4, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
+  pid_equation(er_AngleRoll, 0.35, 0.3, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
   p_a_AngleRoll = PIDReturn[1];
   S_I_AngleRoll = PIDReturn[2];
   RollPID = int(PIDReturn[0]);
   // --- YAW --- //
   er_AngleYaw = 0 - yaw;
   p_a_AngleYaw = yaw;
-  pid_equation(er_AngleYaw, 0.5, 0.3, 0.02 ,p_a_AngleYaw,S_I_AngleYaw, 2);
+  pid_equation(er_AngleYaw, 0.35, 0.3, 0.02 ,p_a_AngleYaw,S_I_AngleYaw, 2);
   p_a_AngleYaw = PIDReturn[1];
   S_I_AngleYaw = PIDReturn[2];
   YawPID = int(PIDReturn[0]); 
   // --- PITCH --- //
   er_AnglePitch = 0 - pitch;
   p_a_AnglePitch = pitch;
-  pid_equation(er_AnglePitch, 0.6, 0.4, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
+  pid_equation(er_AnglePitch, 0.35, 0.3, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
   p_a_AnglePitch = PIDReturn[1];
   S_I_AnglePitch = PIDReturn[2];
   PitchPID = int(PIDReturn[0]);
@@ -219,12 +213,6 @@ void gyro_signals(void) {
              e_psi = int(euler[0] * 180/M_PI);
              e_theta = int(euler[1] * 180/M_PI);
              e_phi = (-1)* int(euler[2] * 180/M_PI);
-             Serial.print("1_Euler\tpsi: ");
-             Serial.print(e_psi);
-             Serial.print("\ttheta: ");
-             Serial.print(e_theta);
-             Serial.print("\t phi: ");
-             Serial.println(e_phi);
           #endif
         #endif
         #ifdef OUTPUT_READABLE_YAWPITCHROLL
@@ -258,9 +246,7 @@ void setup() {
   Motor4.attach(3, 0, 2000); // Front Right
   //------------ MPU6050 INITIALIZATION ------------//
   mpu.initialize();
-  Serial.println(F("Testing device connections..."));
-  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
-  Serial.println(F("Initializing DMP..."));
+  mpu.testConnection() ? digitalWrite(LED_BUILTIN,1) : digitalWrite(LED_BUILTIN,0);
   devStatus = mpu.dmpInitialize();
   // supply your own gyro offsets here, scaled for min sensitivity
   mpu.setXGyroOffset(328);
@@ -275,28 +261,31 @@ void setup() {
     mpu.CalibrateGyro(6);
     mpu.PrintActiveOffsets();
     // turn on the DMP, now that it's ready
-    Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
     // enable Arduino interrupt detection
-    Serial.print(F("Enabling interrupt detection (Arduino external interrupt "));
-    //Serial.print(digitalPinToInterrupt(INTERRUPT_PIN));
-    Serial.println(F(")..."));
-    //attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
     // set our DMP Ready flag so the main loop() function knows it's okay to use it
-    Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
     // get expected DMP packet size for later comparison
-        packetSize = mpu.dmpGetFIFOPacketSize();
+    packetSize = mpu.dmpGetFIFOPacketSize();
     } 
   else {
+    Motor1.write(1000);//FR
+    Motor2.write(1000);//BR
+    Motor3.write(1000);//BL 
+    Motor4.write(1000);//FL
     // ERROR!
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
     // (if it's going to break, usually the code will be 1)
-   Serial.print(F("DMP Initialization failed (code "));
-   Serial.print(devStatus);
-   Serial.println(F(")"));
+    B:for(byte n = 0; n<devStatus; n++){
+      digitalWrite(LED_BUILTIN,HIGH);
+      delay(500);
+      digitalWrite(LED_BUILTIN,LOW);
+      delay(500);
+    }
+   delay(5000); 
+   goto B;
   }
   //------------ RADIO INITIALIZATION ------------//
   radio.begin();              // Activate module [активировать модуль]
@@ -338,14 +327,6 @@ void loop() {
     gotByte = gotByte >> 8;
     x1 = gotByte & 255;
     desiredAngle();
-    Serial.print("x1: ");
-    Serial.print(x1);    // z - axis
-    Serial.print("\ty1: ");
-    Serial.print(y1);    // z - axis
-    Serial.print("\tx2: ");
-    Serial.print(x2);    // y - axis
-    Serial.print("\ty2; ");
-    Serial.println(y2); //x - axis
     x2 = map(x2, 0, 255, -300, 300);
     y2 = map(y2, 0, 255, -300, 300);
     x1 = map(x1, 0, 255, -300, 300);
@@ -354,18 +335,6 @@ void loop() {
     if(y2 == -6) y2 = 0;
     if(x1 == -6) x1 = 0;
     if(y1 == -6) y1 = 0;
-    constrain(x1,-1000,1000);
-    constrain(y1,-1000,1000);
-    constrain(x2,-1000,1000);
-    constrain(y2,-1000,1000);
-    Serial.print("x1: ");
-    Serial.print(x1);    // z - axis
-    Serial.print("\ty1: ");
-    Serial.print(y1);    // z - axis
-    Serial.print("\tx2: ");
-    Serial.print(x2);    // y - axis
-    Serial.print("\ty2; ");
-    Serial.println(y2);  //x - axis
     while(SAFETY == 0){
       FR = NO_SPEED; 
       FL = NO_SPEED;
@@ -378,9 +347,7 @@ void loop() {
       if(y2 < 0){
         SAFETY = 1;
         unsigned int oldtimer = 0;
-        for(byte i = 0; i<=100; i++){
-          while(millis() - oldtimer < 100) oldtimer = millis();
-        }
+        for(byte i = 0; i<255; i++);
         Serial.println("SAFETY = 1");
       }
       goto A;
@@ -401,19 +368,15 @@ void loop() {
     FL = y2 - x2 - y1 + x1 - PitchPID + RollPID;
     BR = y2 - x2 + y1 - x1 + PitchPID - RollPID;
     BL = y2 + x2 + y1 + x1 + PitchPID + RollPID;
-    FR = map(FR, -2000, 2000, 1000, 2000);
-    FL = map(FL, -2000, 2000, 1000, 2000);
-    BR = map(BR, -2000, 2000, 1000, 2000);
-    BL = map(BL, -2000, 2000, 1000, 2000);
+    FR = map(FR, -1200, 1200, 1000, 2000);
+    FL = map(FL, -1200, 1200, 1000, 2000);
+    BR = map(BR, -1200, 1200, 1000, 2000);
+    BL = map(BL, -1200, 1200, 1000, 2000);
     //------------ SOME CONSTRAINS ------------//
-    constrain(FR,1000,2000);
-    constrain(FL,1000,2000);
-    constrain(BR,1000,2000);
-    constrain(BL,1000,2000);
-    /*if (FR > 2000)FR = 2000;
+    if (FR > 2000)FR = 2000;
     if (BR > 2000)BR = 2000; 
     if (BL > 2000)BL = 2000; 
-    if (FL > 2000)FL = 2000; */
+    if (FL > 2000)FL = 2000;
     if (FR < IDLE_SPEED) FR =  IDLE_SPEED;
     if (BR < IDLE_SPEED) BR =  IDLE_SPEED;
     if (BL < IDLE_SPEED) BL =  IDLE_SPEED;
@@ -451,10 +414,20 @@ void loop() {
     gyro_signals();
     reset_pid();
     pid_Home();
-    FR = y2 + x2 - y1 - x1 - PitchPID - RollPID; 
-    FL = y2 - x2 - y1 + x1 - PitchPID + RollPID;
-    BR = y2 - x2 + y1 - x1 + PitchPID - RollPID;
-    BL = y2 + x2 + y1 + x1 + PitchPID + RollPID;
+    //------------ FORMULA FOR DRONE ------------//
+    FR = YawPID - PitchPID - RollPID; 
+    FL = YawPID - PitchPID + RollPID;
+    BR = YawPID + PitchPID - RollPID;
+    BL = YawPID + PitchPID + RollPID;
+    FR = map(FR, -1200, 1200, 1000, 2000);
+    FL = map(FL, -1200, 1200, 1000, 2000);
+    BR = map(BR, -1200, 1200, 1000, 2000);
+    BL = map(BL, -1200, 1200, 1000, 2000);
+    //------------ SOME CONSTRAINS ------------//
+    if (FR > 2000)FR = 2000;
+    if (BR > 2000)BR = 2000; 
+    if (BL > 2000)BL = 2000; 
+    if (FL > 2000)FL = 2000;
     for(n; n<250;){
       FR = FR - n;
       BR = BR - n;
