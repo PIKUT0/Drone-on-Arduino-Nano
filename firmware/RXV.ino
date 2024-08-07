@@ -1,4 +1,4 @@
-2//------------------- TO_DO LIST ------------------//
+//------------------- TO_DO LIST ------------------//
 // Finish PID and test
 // Smile :)
 // Write all comments
@@ -72,28 +72,27 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 int yaw, pitch, roll;   // our yaw pitch and roll and other shit from GY521
-//int e_psi;              // Euler Psi angle in degrees   ["e" stands for Euler]
-//int e_theta;            // Euler Theta angle in degrees ["e" stands for Euler]
-//int e_phi;              // Euler Phi angle in degrees   ["e" stands for Euler]
+//int e_psi;            // Euler Psi angle in degrees   ["e" stands for Euler]
+//int e_theta;          // Euler Theta angle in degrees ["e" stands for Euler]
+//int e_phi;            // Euler Phi angle in degrees   ["e" stands for Euler]
 //--------- For PID ---------//
 float PIDReturn[]={0, 0, 0}; //PID output
 //Angle
-float des_AngleRoll;      // Desired Roll angle
-float des_AnglePitch;     // Desired pitch angle
-float des_AngleYaw;       // Desired yaw angle
+int des_AngleRoll;        // Desired Roll angle
+int des_AnglePitch;       // Desired pitch angle
+int des_AngleYaw;         // Desired yaw angle
 
-float error_AngleRoll;  // Error for roll angle in degrees
-float error_AnglePitch; // Error for pitch angle in degress
-float error_AngleYaw;   // Error for yaw angle in degrees 
+float er_AngleRoll = 0;   // Error for roll angle in degrees
+float er_AnglePitch= 0;   // Error for pitch angle in degress
+float er_AngleYaw = 0;    // Error for yaw angle in degrees 
 
-float p_e_AngleRoll;    // p_e{..} = Previous Error for roll angle
-float p_e_AnglePitch;   // p_e{..} = Previous Error for pitch angle
-float p_e_AngleYaw;     // p_e{..} = Previous Error for Yaw angle
+float p_a_AngleRoll=0;    // p_e{..} = Previous Error for roll angle
+float p_a_AnglePitch=0;   // p_e{..} = Previous Error for pitch angle
+float p_a_AngleYaw=0;     // p_e{..} = Previous Error for Yaw angle
 
-float p_I_AngleRoll;    // p_e{..} = Previous Integral Error for roll angle
-float p_I_AnglePitch;   // p_e{..} = Previous Integral Error for pitch angle
-float p_I_AngleYaw;     // p_e{..} = Previous Integral Error for Yaw angle
-
+float S_I_AngleRoll = 0;  // p_e{..} = Previous Integral sum of Error for roll angle   
+float S_I_AnglePitch =0;  // p_e{..} = Previous Integral sum of Error for pitch angle
+float S_I_AngleYaw = 0;   // p_e{..} = Previous Integral sum of Error for Yaw angle
 //--- For MOTORS and Radio ---//
 int x1,y1,x2,y2;        // Our radio joystick variables
 int RollPID, PitchPID, YawPID;
@@ -114,45 +113,99 @@ unsigned long gotByte;     // Radio data
 void desiredAngle(){
   // -- Yaw -- //
   des_AngleYaw = map(x2, 0, 255, 1000,2000);
-  des_AngleYaw = 0.1*(des_AngleYaw - 1500);
-  if(des_AngleYaw == -1.0) des_AngleYaw = 0;
+  des_AngleYaw = int(0.1*(des_AngleYaw - 1500));
+  if(des_AngleYaw == -1) des_AngleYaw = 0;
   // -- Picth -- //
   des_AnglePitch = map(y1, 0, 255, 1000,2000);
-  des_AnglePitch = 0.1*(des_AnglePitch - 1500);
-  if(des_AnglePitch == -1.0) des_AnglePitch = 0;
+  des_AnglePitch = int(0.1*(des_AnglePitch - 1500));
+  if(des_AnglePitch == -1) des_AnglePitch = 0;
   // -- Roll -- //
   des_AngleRoll = map(x1, 0, 255, 1000,2000);
-  des_AngleRoll = 0.1*(des_AngleRoll - 1500);
-  if(des_AngleRoll == -1.0) des_AngleRoll = 0;
-  // Debug
-  Serial.print("1_desiredRateYaw: ");
-  Serial.print(des_AngleYaw);
-  Serial.print("\tdesiredRatePitch: ");
-  Serial.print(des_AnglePitch);
-  Serial.print("\t desiredRateRoll: ");
-  Serial.println(des_AngleRoll);
+  des_AngleRoll = int(0.1*(des_AngleRoll - 1500));
+  if(des_AngleRoll == -1.) des_AngleRoll = 0;
 }
 
 //This Function is PID function
-void pid_equation(float Error, float KP, float KI, float KD, float PrevError, float PrevIterm){
-  float P = KP * Error;
-  float I = KI*(PrevIterm + Error);
-  if (I > 200) I=200;
-  else if (I < -200) I=-200;
-  float D = D * (Error - PrevError);
-  float PID = P+I+D;
+void pid_equation(float Error, float KP, float KI, float KD, float PrevData, float ISum, byte k){
+  int Data = 0;
+  float uP, uI, uD, PID;
+  uP = KP * Error;
+  ISum = ISum + Error;
+  if(Error == 0) ISum = 0;
+  if(ISum < -200)ISum = -200;
+  if(ISum > 200)ISum = 200; 
+  uI = KI * ISum;
+  gyro_signals();
+  if(k == 0) Data = roll;
+  if(k == 1) Data = pitch;
+  if(k == 2) Data = yaw;
+  uD = KD * (Data - PrevData);
+ /* Serial.print("PID\tuP: ");
+  Serial.print(uP);
+  Serial.print("\tuI: ");
+  Serial.print(uI);
+  Serial.print("\tuD: ");
+  Serial.println(uD);*/
+  PID = uP + uI + uD;
   if (PID>200) PID=200;
   else if (PID <-200) PID=-200;
   PIDReturn[0] = PID;
   PIDReturn[1] = Error;
-  PIDReturn[2] = I;
+  PIDReturn[2] = ISum;
 }
 
+//This Function will calculate Roll, Yawm and Pitch PID
+void pid_calculate(){
+  // --- ROLL --- //
+  Serial.print("ROLL\n");
+  er_AngleRoll = des_AngleRoll - roll; 
+  p_a_AngleRoll = roll;
+  pid_equation(er_AngleRoll, 0.6, 0.4, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
+  p_a_AngleRoll = PIDReturn[1];
+  S_I_AngleRoll = PIDReturn[2];
+  RollPID = int(PIDReturn[0]);
+  
+  // --- YAW --- //
+  //No need
+  // --- PITCH --- //
+  Serial.print("PITCH\n");
+  er_AnglePitch = des_AnglePitch - pitch;
+  p_a_AnglePitch = pitch;
+  pid_equation(er_AnglePitch, 0.6, 0.4, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
+  p_a_AnglePitch = PIDReturn[1];
+  S_I_AnglePitch = PIDReturn[2];
+  PitchPID = int(PIDReturn[0]);
+}
+
+//This Function will calculate Roll, Yawm and Pitch PID to "Return Home"
+void pid_Home(){
+  // --- ROLL --- //
+  er_AngleRoll = 0 - roll; 
+  p_a_AngleRoll = roll;
+  pid_equation(er_AngleRoll, 0.6, 0.4, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
+  p_a_AngleRoll = PIDReturn[1];
+  S_I_AngleRoll = PIDReturn[2];
+  RollPID = int(PIDReturn[0]);
+  // --- YAW --- //
+  er_AngleYaw = 0 - yaw;
+  p_a_AngleYaw = yaw;
+  pid_equation(er_AngleYaw, 0.5, 0.3, 0.02 ,p_a_AngleYaw,S_I_AngleYaw, 2);
+  p_a_AngleYaw = PIDReturn[1];
+  S_I_AngleYaw = PIDReturn[2];
+  YawPID = int(PIDReturn[0]); 
+  // --- PITCH --- //
+  er_AnglePitch = 0 - pitch;
+  p_a_AnglePitch = pitch;
+  pid_equation(er_AnglePitch, 0.6, 0.4, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
+  p_a_AnglePitch = PIDReturn[1];
+  S_I_AnglePitch = PIDReturn[2];
+  PitchPID = int(PIDReturn[0]);
+}
 //This Function is PID error reset function
 void reset_pid(){
-  //error_AngleRoll = 0; error_AnglePitch = 0; error_AngleYaw = 0;
-  p_e_AngleRoll = 0; p_e_AnglePitch = 0;  p_e_AngleYaw = 0;
-  p_I_AngleRoll = 0; p_I_AnglePitch = 0;  p_I_AngleYaw = 0;
+  p_a_AngleRoll = 0; p_a_AnglePitch = 0;  p_a_AngleYaw = 0;
+  S_I_AngleRoll = 0; S_I_AnglePitch = 0;  S_I_AngleYaw = 0;
+  des_AngleRoll = 0; des_AnglePitch = 0;  des_AngleYaw = 0;
 }
 //This Function will return the angle(yaw, pitch, roll)[Wire], Euler angles(DMP) = pure shit
 void gyro_signals(void) { 
@@ -192,37 +245,7 @@ void gyro_signals(void) {
              Serial.println(roll);
           #endif
         #endif
-
-       /* #ifdef OUTPUT_READABLE_REALACCEL
-            // display real acceleration, adjusted to remove gravity
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-            Serial.print("areal\t");
-            Serial.print(aaReal.x);
-            Serial.print("\t");
-            Serial.print(aaReal.y);
-            Serial.print("\t");
-            Serial.println(aaReal.z);
-        #endif
-
-        #ifdef OUTPUT_READABLE_WORLDACCEL
-            // display initial world-frame acceleration, adjusted to remove gravity
-            // and rotated based on known orientation from quaternion
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-            mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-            Serial.print("aworld\t");
-            Serial.print(aaWorld.x);
-            Serial.print("\t");
-            Serial.print(aaWorld.y);
-            Serial.print("\t");
-            Serial.println(aaWorld.z);
-        #endif */
-    }
+     }
 }
 
 //------------ SETUP TIME ------------//
@@ -299,8 +322,9 @@ void setup() {
 
 //------------ LOOP TIME ------------//
 void loop() {
-  byte pipeNo;
+  B:byte pipeNo;
   unsigned int OldTimer;
+  byte n;
   //------------ WHILE RADIO WORKS ------------//
   A: while (radio.available(&pipeNo)) {        // слушаем эфир со всех труб
     //------------ GET THE DATA ------------//
@@ -364,24 +388,7 @@ void loop() {
     //------------ GET THE MPU6050 DATA ------------//
     gyro_signals();
     //------------ USE PID CONTROLLER ------------//
-    // --- ROLL --- //
-    error_AngleRoll = des_AngleRoll - roll; 
-    pid_equation(error_AngleRoll, 0.6, 3.5, 0.05, p_e_AngleRoll, p_I_AngleRoll);
-    p_e_AngleRoll = PIDReturn[1];
-    p_I_AngleRoll = PIDReturn[2];
-    RollPID = int(PIDReturn[0]);
-    // --- YAW --- //
-    error_AngleYaw = des_AngleYaw - yaw;
-    pid_equation(error_AngleYaw, 1.4, 5, 0.02 ,p_e_AngleYaw,p_I_AngleYaw);
-    p_e_AngleYaw = PIDReturn[1];
-    p_I_AngleYaw = PIDReturn[2];
-    YawPID = int(PIDReturn[0]); 
-    // --- PITCH --- //
-    error_AnglePitch = des_AnglePitch - pitch;
-    pid_equation(error_AnglePitch, 0.6, 3.5, 0.05, p_e_AnglePitch,p_I_AnglePitch);
-    p_e_AnglePitch = PIDReturn[1];
-    p_I_AnglePitch = PIDReturn[2];
-    PitchPID = int(PIDReturn[0]);
+    pid_calculate();
     //Debug
     Serial.print("PID\tYaw: ");
     Serial.print(YawPID);
@@ -390,10 +397,10 @@ void loop() {
     Serial.print("\tRoll: ");
     Serial.println(RollPID);
     //------------ FORMULA FOR DRONE ------------//
-    FR = y2 + x2 + y1 + x1 + YawPID - PitchPID + RollPID; 
-    FL = y2 - x2 + y1 - x1 - YawPID - PitchPID - RollPID;
-    BR = y2 - x2 - y1 + x1 - YawPID + PitchPID + RollPID;
-    BL = y2 + x2 - y1 - x1 + YawPID + PitchPID - RollPID;
+    FR = y2 + x2 + y1 + x1 - PitchPID - RollPID; 
+    FL = y2 - x2 + y1 - x1 - PitchPID + RollPID;
+    BR = y2 - x2 - y1 + x1 + PitchPID - RollPID;
+    BL = y2 + x2 - y1 - x1 + PitchPID + RollPID;
    // FR = map(FR, -1200, 1200, 1000, 2000);
    // FL = map(FL, -1200, 1200, 1000, 2000);
    // BR = map(BR, -1200, 1200, 1000, 2000);
@@ -417,7 +424,7 @@ void loop() {
     if (FL < IDLE_SPEED) FL =  IDLE_SPEED;
     if (y2<-290) {
       FR=NO_SPEED; 
-  22    BR=NO_SPEED;
+      BR=NO_SPEED;
       BL=NO_SPEED; 
       FL=NO_SPEED;
       reset_pid();
@@ -443,36 +450,16 @@ void loop() {
   // Its job is to lower height every n seconds
   // while being stable in the air
   OldTimer = millis();
- B:while (!radio.available(&pipeNo)) {// слушаем эфир со всех труб
+ C:while (!radio.available(&pipeNo)){// слушаем эфир со всех труб
     //Serial.println(" ----------- ");
     gyro_signals();
     reset_pid();
-    des_AngleRoll = 0;
-    des_AngleYaw = 0;
-    des_AnglePitch = 0;
-    // --- ROLL --- //
-    error_AngleRoll = des_AngleRoll - roll; 
-    pid_equation(error_AngleRoll, 0.6, 3.5, 0.05, p_e_AngleRoll, p_I_AngleRoll);
-    p_e_AngleRoll = PIDReturn[1];
-    p_I_AngleRoll = PIDReturn[2];
-    RollPID = int(PIDReturn[0]);
-    // --- YAW --- //
-    error_AngleYaw = des_AngleYaw - yaw;
-    pid_equation(error_AngleYaw, 1.4, 5, 0.02 ,p_e_AngleYaw,p_I_AngleYaw);
-    p_e_AngleYaw = PIDReturn[1];
-    p_I_AngleYaw = PIDReturn[2];
-    YawPID = int(PIDReturn[0]); 
-    // --- PITCH --- //
-    error_AnglePitch = des_AnglePitch - pitch;
-    pid_equation(error_AnglePitch, 0.6, 3.5, 0.05, p_e_AnglePitch,p_I_AnglePitch);
-    p_e_AnglePitch = PIDReturn[1];
-    p_I_AnglePitch = PIDReturn[2];
-    PitchPID = int(PIDReturn[0]);
-    FR = 1500 + YawPID + PitchPID + RollPID; 
-    FL = 1500 - YawPID + PitchPID - RollPID;
-    BR = 1500 - YawPID - PitchPID + RollPID;
-    BL = 1500 + YawPID - PitchPID - RollPID;
-    for(unsigned int n = 0; n<400;){
+    pid_Home();
+    FR = y2 + x2 + y1 + x1 - YawPID - PitchPID - RollPID; 
+    FL = y2 - x2 + y1 - x1 + YawPID - PitchPID + RollPID;
+    BR = y2 - x2 - y1 + x1 + YawPID + PitchPID - RollPID;
+    BL = y2 + x2 - y1 - x1 - YawPID + PitchPID + RollPID;
+    for(n; n<250;){
       FR = FR - n;
       BR = BR - n;
       BL = BL - n;
@@ -481,17 +468,18 @@ void loop() {
       Motor2.writeMicroseconds(BR);
       Motor3.writeMicroseconds(BL); 
       Motor4.writeMicroseconds(FL);
-      if(millis() - OldTimer >= 10000){
+      if(millis() - OldTimer >= 2000){
         OldTimer = millis();
         n = n + 50;
         Serial.println(n);
       }
-      if(FR == 1100 && BR == 1100 && BL == 1100 && FL == 1100){
+      goto C;
+      if(n == 400){
         Motor1.writeMicroseconds(NO_SPEED);
         Motor2.writeMicroseconds(NO_SPEED);
         Motor3.writeMicroseconds(NO_SPEED); 
         Motor4.writeMicroseconds(NO_SPEED);
-        //while(1){Serial.println("END!");}
+        while(1){Serial.println("END!");}
       }
       else if(radio.available(&pipeNo)){
         OldTimer = millis();
@@ -500,4 +488,5 @@ void loop() {
         }
     }
   }
+  n = 0;
 }
