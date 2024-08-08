@@ -1,8 +1,5 @@
 //------------------- TO_DO LIST ------------------//
-// Finish PID and test
 // Smile :)
-// Write all comments
-// Commit to github
 // Write papers
 // Be happy
 //------------------- CREDITS ------------------//
@@ -10,7 +7,7 @@
 // GitHub: https://github.com/PIKUT0
 // Project GitHUb: https://github.com/PIKUT0/Drone-on-Arduino-Nano
 // 12.06.20 Started 
-// 07.08.24 Finished
+// 08.08.24 Finished
 // Yeah, I was lazy asf.
 // This code is for Drone = Receiver
 //-------------------- CODE -------------------//
@@ -86,14 +83,15 @@ float er_AngleRoll = 0; // Error for roll angle in degrees
 float er_AnglePitch= 0; // Error for pitch angle in degress
 float er_AngleYaw = 0;  // Error for yaw angle in degrees 
 
-float p_a_AngleRoll=0;  // p_e{..} = Previous Error for roll angle
-float p_a_AnglePitch=0; // p_e{..} = Previous Error for pitch angle
-float p_a_AngleYaw=0;   // p_e{..} = Previous Error for Yaw angle
+float p_a_AngleRoll=0;  // p_e{..} = Previous Angle [Roll]
+float p_a_AnglePitch=0; // p_e{..} = Previous Angle [Pitch]
+float p_a_AngleYaw=0;   // p_e{..} = Previous Angle [Yaw]
 
 float S_I_AngleRoll = 0;// p_e{..} = Previous Integral sum of Error for roll angle   
 float S_I_AnglePitch =0;// p_e{..} = Previous Integral sum of Error for pitch angle
 float S_I_AngleYaw = 0; // p_e{..} = Previous Integral sum of Error for Yaw angle
 //--- For MOTORS and Radio ---//
+unsigned long OldTimer; // Counter for some Logic
 int x1,y1,x2,y2;        // Our radio joystick variables
 int RollPID, PitchPID, YawPID;
 int FL, FR, BL, BR = 0; // Motor Inputs
@@ -150,7 +148,6 @@ void pid_equation(float Error, float KP, float KI, float KD, float PrevData, flo
 //This Function will calculate Roll, Yawm and Pitch PID
 void pid_calculate(){
   // --- ROLL --- //
-  Serial.print("ROLL\n");
   er_AngleRoll = des_AngleRoll - roll; 
   p_a_AngleRoll = roll;
   pid_equation(er_AngleRoll, 0.35, 0.3, 0.04, p_a_AngleRoll, S_I_AngleRoll, 0);
@@ -161,7 +158,6 @@ void pid_calculate(){
   // --- YAW --- //
   //No Need
   // --- PITCH --- //
-  Serial.print("PITCH\n");
   er_AnglePitch = des_AnglePitch - pitch;
   p_a_AnglePitch = pitch;
   pid_equation(er_AnglePitch, 0.35, 0.3, 0.04, p_a_AnglePitch,S_I_AnglePitch, 1);
@@ -224,21 +220,33 @@ void gyro_signals(void) {
              yaw = int(ypr[0] * 180/M_PI);
              pitch =(-1)*int(ypr[1] * 180/M_PI);
              roll = int(ypr[2] * 180/M_PI);
-             Serial.print("2_Euler\tyaw: ");
-             Serial.print(yaw);
-             Serial.print("\tpitch: ");
-             Serial.print(pitch);
-             Serial.print("\troll: ");
-             Serial.println(roll);
-             Serial.print("\n ");
           #endif
         #endif
      }
 }
-
+//This Function will rise drone smootly
+void smooth_rise(){
+  SAFETY = 0;
+  FL = 1000;
+  OldTimer = millis();
+  while(SAFETY == 0){ 
+    Motor1.writeMicroseconds(FL);
+    Motor2.writeMicroseconds(FL);
+    Motor3.writeMicroseconds(FL); 
+    Motor4.writeMicroseconds(FL);
+    if(millis() - OldTimer >= 500){
+      OldTimer = millis();
+      FL = FL + 25;
+    }
+    if(FL>1500){
+      FL = 1500;
+      SAFETY = 1;
+    }
+  }
+  FL = 0;
+}
 //------------ SETUP TIME ------------//
 void setup() {
-  Serial.begin(9600);
   //------------ MOTOR INITIALIZATION ------------//
   Motor1.attach(5, 0, 2000); // Front Right 
   Motor2.attach(6, 0, 2000); // Back Right
@@ -278,7 +286,7 @@ void setup() {
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
     // (if it's going to break, usually the code will be 1)
-    B:for(byte n = 0; n<devStatus; n++){
+    B:for(byte L = 0; L<devStatus; L++){
       digitalWrite(LED_BUILTIN,HIGH);
       delay(500);
       digitalWrite(LED_BUILTIN,LOW);
@@ -311,11 +319,32 @@ void setup() {
 
 //------------ LOOP TIME ------------//
 void loop() {
-  B:byte pipeNo;
-  unsigned int OldTimer;
-  byte n;
+  byte pipeNo;
+  unsigned int n = 1400;
+  //------------ IF WE WANT TO EASILY LOWER OUR HEIGHT------------//
+  OldTimer = millis();
+  while(SAFETY == 2){
+    if(FR == 0) n = 1000;
+    FR = n; 
+    Motor1.writeMicroseconds(FR);
+    Motor2.writeMicroseconds(FR);
+    Motor3.writeMicroseconds(FR); 
+    Motor4.writeMicroseconds(FR);
+    if(millis() - OldTimer >= 500){
+      OldTimer = millis();
+      n = n - 25;
+    }
+    if(n < 1000){
+      while(true){
+        Motor1.writeMicroseconds(1000);
+        Motor2.writeMicroseconds(1000);
+        Motor3.writeMicroseconds(1000); 
+        Motor4.writeMicroseconds(1000);
+      }
+    }
+  }
   //------------ WHILE RADIO WORKS ------------//
-  A: while (radio.available(&pipeNo)) {        // слушаем эфир со всех труб
+  A:while (radio.available(&pipeNo)) {        // слушаем эфир со всех труб
     //------------ GET THE DATA ------------//
     // Here we are getting data from transmitter and playing with it
     radio.read(&gotByte, sizeof(gotByte));  // чиатем входящий сигнал
@@ -335,7 +364,8 @@ void loop() {
     if(y2 == -6) y2 = 0;
     if(x1 == -6) x1 = 0;
     if(y1 == -6) y1 = 0;
-    while(SAFETY == 0){
+    //------------ SAFETY GOES FIRST ------------//
+    D:while(SAFETY == 0){
       FR = NO_SPEED; 
       FL = NO_SPEED;
       BR = NO_SPEED;
@@ -344,25 +374,19 @@ void loop() {
       Motor2.writeMicroseconds(BR);
       Motor3.writeMicroseconds(BL); 
       Motor4.writeMicroseconds(FL);
-      if(y2 < 0){
+      if(y2 && y1 < 0){
         SAFETY = 1;
-        unsigned int oldtimer = 0;
-        for(byte i = 0; i<255; i++);
-        Serial.println("SAFETY = 1");
+        smooth_rise();
       }
       goto A;
+    }
+    while(SAFETY == 2){
+      break;
     }
     //------------ GET THE MPU6050 DATA ------------//
     gyro_signals();
     //------------ USE PID CONTROLLER ------------//
     pid_calculate();
-    //Debug
-    Serial.print("PID\tYaw: ");
-    Serial.print(YawPID);
-    Serial.print("\tPitch: ");
-    Serial.print(PitchPID);
-    Serial.print("\tRoll: ");
-    Serial.println(RollPID);
     //------------ FORMULA FOR DRONE ------------//
     FR = y2 + x2 - y1 - x1 - PitchPID - RollPID; 
     FL = y2 - x2 - y1 + x1 - PitchPID + RollPID;
@@ -381,23 +405,17 @@ void loop() {
     if (BR < IDLE_SPEED) BR =  IDLE_SPEED;
     if (BL < IDLE_SPEED) BL =  IDLE_SPEED;
     if (FL < IDLE_SPEED) FL =  IDLE_SPEED;
-    if (y2<-290) {
+    if (y2<-295 && x2<-295){
+      SAFETY = 2;
+      break;
+    }
+    if (y2<-295) {
       FR=NO_SPEED; 
       BR=NO_SPEED;
       BL=NO_SPEED; 
       FL=NO_SPEED;
       reset_pid();
-    } 
-    //Debug
-    Serial.print("FR: ");
-    Serial.print(FR);    // z - axis
-    Serial.print("\tFL: ");
-    Serial.print(FL);    // z - axis
-    Serial.print("\tBR: ");
-    Serial.print(BR);    // y - axis
-    Serial.print("\tBL; ");
-    Serial.println(BL);
-    Serial.print("\n");
+    }
     //------------ APPLY VALUES TO MOTORS ------------//
     Motor1.writeMicroseconds(FR);
     Motor2.writeMicroseconds(BR);
@@ -409,16 +427,20 @@ void loop() {
   // Its job is to lower height every n seconds
   // while being stable in the air
   OldTimer = millis();
- C:while (!radio.available(&pipeNo)){// слушаем эфир со всех труб
-    //Serial.println(" ----------- ");
+  while (!radio.available(&pipeNo)){// слушаем эфир со всех труб
+    while(SAFETY == 0)goto D;   //Check If safety flag is 0 = there was no activity "no rise"
+    while(SAFETY == 1 && y2 <-295){ //Check If safety flag is 1 and y2 <-295 = no "firewall", but no speed;
+      FR = 0;
+      goto E;
+    }
     gyro_signals();
     reset_pid();
     pid_Home();
     //------------ FORMULA FOR DRONE ------------//
-    FR = YawPID - PitchPID - RollPID; 
-    FL = YawPID - PitchPID + RollPID;
-    BR = YawPID + PitchPID - RollPID;
-    BL = YawPID + PitchPID + RollPID;
+    FR = 0 + YawPID - PitchPID - RollPID; 
+    FL = 0 - YawPID - PitchPID + RollPID;
+    BR = 0 - YawPID + PitchPID - RollPID;
+    BL = 0 + YawPID + PitchPID + RollPID;
     FR = map(FR, -1200, 1200, 1000, 2000);
     FL = map(FL, -1200, 1200, 1000, 2000);
     BR = map(BR, -1200, 1200, 1000, 2000);
@@ -428,34 +450,14 @@ void loop() {
     if (BR > 2000)BR = 2000; 
     if (BL > 2000)BL = 2000; 
     if (FL > 2000)FL = 2000;
-    for(n; n<250;){
-      FR = FR - n;
-      BR = BR - n;
-      BL = BL - n;
-      FL = FL - n;
-      Motor1.writeMicroseconds(FR);
-      Motor2.writeMicroseconds(BR);
-      Motor3.writeMicroseconds(BL); 
-      Motor4.writeMicroseconds(FL);
-      if(millis() - OldTimer >= 2000){
-        OldTimer = millis();
-        n = n + 50;
-        Serial.println(n);
-      }
-      goto C;
-      if(n == 400){
-        Motor1.writeMicroseconds(NO_SPEED);
-        Motor2.writeMicroseconds(NO_SPEED);
-        Motor3.writeMicroseconds(NO_SPEED); 
-        Motor4.writeMicroseconds(NO_SPEED);
-        while(1){Serial.println("END!");}
-      }
-      else if(radio.available(&pipeNo)){
-        OldTimer = millis();
-        n = 0;
-        goto B;
-        }
+    Motor1.writeMicroseconds(FR);
+    Motor2.writeMicroseconds(BR);
+    Motor3.writeMicroseconds(BL); 
+    Motor4.writeMicroseconds(FL);
+    E:if(millis() - OldTimer >= 8000){
+      OldTimer = millis();
+      SAFETY = 2;
+      break;
     }
   }
-  n = 0;
 }
