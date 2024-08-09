@@ -141,7 +141,7 @@ void pid_equation(float Error, float KP, float KI, float KD, float PrevData, flo
   if (PID>200) PID=200;
   else if (PID <-200) PID=-200;
   PIDReturn[0] = PID;
-  PIDReturn[1] = Error;
+  PIDReturn[1] = Data;
   PIDReturn[2] = ISum;
 }
 
