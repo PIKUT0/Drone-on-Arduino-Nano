@@ -24,6 +24,6 @@ There's some videos on my [YT channel](https://www.youtube.com/@Pikuto):
 - x4 Brushless motor + ESC
 - 2 Joysticks
 - 2 MPU6050 (GY521)
-*Time* .
+- *Time* 
 
 ### That's all! Have a great day 🤗
